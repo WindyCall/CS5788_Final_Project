@@ -13,8 +13,6 @@ Full run:
     python scripts/train_dpo_raw.py --fp16
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import math
@@ -32,23 +30,23 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 # Data
 # ---------------------------------------------------------------------------
 
-def load_jsonl(path: Path) -> list[dict]:
+def load_jsonl(path):
     with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f]
 
 
-def make_log_path(log_dir: Path, run_name: str) -> Path:
+def make_log_path(log_dir, run_name):
     log_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return log_dir / f"{run_name}_{stamp}.log"
 
 
-def write_log(log_path: Path, message: str) -> None:
+def write_log(log_path, message):
     with log_path.open("a", encoding="utf-8") as f:
         f.write(message + "\n")
 
 
-def log_print(log_path: Path, message: str) -> None:
+def log_print(log_path, message):
     print(message)
     write_log(log_path, message)
 
@@ -56,13 +54,13 @@ def log_print(log_path: Path, message: str) -> None:
 class DPODataset(Dataset):
     """Stores raw strings; tokenisation is deferred to the collator."""
 
-    def __init__(self, rows: list[dict]) -> None:
+    def __init__(self, rows):
         self.rows = rows
 
-    def __len__(self) -> int:
+    def __len__(self):
         return len(self.rows)
 
-    def __getitem__(self, idx: int) -> dict:
+    def __getitem__(self, idx):
         return self.rows[idx]
 
 
@@ -71,17 +69,17 @@ class DPOCollator:
 
     def __init__(
         self,
-        tokenizer: AutoTokenizer,
-        max_length: int,
-        max_prompt_length: int,
-        device: torch.device,
-    ) -> None:
+        tokenizer,
+        max_length,
+        max_prompt_length,
+        device,
+    ):
         self.tokenizer        = tokenizer
         self.max_length       = max_length
         self.max_prompt_length = max_prompt_length
         self.device           = device
 
-    def _encode(self, texts: list[str]) -> dict[str, torch.Tensor]:
+    def _encode(self, texts):
         enc = self.tokenizer(
             texts,
             padding=True,
@@ -92,7 +90,7 @@ class DPOCollator:
         )
         return {k: v.to(self.device) for k, v in enc.items()}
 
-    def __call__(self, batch: list[dict]) -> dict:
+    def __call__(self, batch):
         # Concatenate prompt + response for each side
         chosen_texts   = [b["prompt"] + " " + b["chosen"]   for b in batch]
         rejected_texts = [b["prompt"] + " " + b["rejected"] for b in batch]
@@ -128,10 +126,10 @@ class DPOCollator:
 # ---------------------------------------------------------------------------
 
 def _completion_mask(
-    input_ids: torch.Tensor,
-    attention_mask: torch.Tensor,
-    prompt_lens: torch.Tensor,
-) -> torch.Tensor:
+    input_ids,
+    attention_mask,
+    prompt_lens,
+):
     """Binary mask [B, T-1]: 1 for response tokens, 0 for prompt/padding.
 
     We score positions t where:
@@ -149,11 +147,11 @@ def _completion_mask(
 
 
 def sequence_logprob(
-    model_logits: torch.Tensor,
-    input_ids: torch.Tensor,
-    attention_mask: torch.Tensor,
-    prompt_lens: torch.Tensor,
-) -> torch.Tensor:
+    model_logits,
+    input_ids,
+    attention_mask,
+    prompt_lens,
+):
     """Sum of log-probs over completion tokens.
 
     model_logits : [B, T, V]
@@ -174,12 +172,12 @@ def sequence_logprob(
 # ---------------------------------------------------------------------------
 
 def compute_dpo_loss(
-    chosen_logprob:     torch.Tensor,
-    rejected_logprob:   torch.Tensor,
-    chosen_logprob_ref: torch.Tensor,
-    rejected_logprob_ref: torch.Tensor,
-    beta: float,
-) -> torch.Tensor:
+    chosen_logprob,
+    rejected_logprob,
+    chosen_logprob_ref,
+    rejected_logprob_ref,
+    beta,
+):
     """Batch-mean DPO loss.
 
     All inputs are [B] tensors of total completion log-probabilities.
@@ -195,7 +193,7 @@ def compute_dpo_loss(
 # LR schedule
 # ---------------------------------------------------------------------------
 
-def cosine_schedule(step: int, total: int, min_ratio: float = 0.1) -> float:
+def cosine_schedule(step, total, min_ratio=0.1):
     if total <= 1:
         return 1.0
     p = step / max(1, total - 1)
@@ -206,7 +204,7 @@ def cosine_schedule(step: int, total: int, min_ratio: float = 0.1) -> float:
 # Main
 # ---------------------------------------------------------------------------
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description="Raw DPO training (no TRL)")
     parser.add_argument("--model-name",     default="models/sft",
                         help="SFT checkpoint used as the trainable policy")

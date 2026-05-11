@@ -5,24 +5,18 @@ generation-time evaluation: each trained model generates continuations from the
 same prompts, then a toxicity classifier scores those generations.
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from datasets import Dataset
 
 
-def get_nested_text(value: Any) -> str:
+def get_nested_text(value):
     if isinstance(value, dict):
         return str(value.get("text") or "").strip()
     return str(value or "").strip()
 
 
-def get_nested_score(value: Any, key: str = "toxicity") -> float | None:
+def get_nested_score(value, key="toxicity"):
     if not isinstance(value, dict):
         return None
     score = value.get(key)
@@ -31,7 +25,7 @@ def get_nested_score(value: Any, key: str = "toxicity") -> float | None:
     return float(score)
 
 
-def preprocess_example(example: dict[str, Any]) -> dict[str, Any]:
+def preprocess_example(example):
     prompt = example.get("prompt")
     continuation = example.get("continuation")
 
@@ -47,11 +41,11 @@ def preprocess_example(example: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def is_valid_example(example: dict[str, Any]) -> bool:
+def is_valid_example(example):
     return bool(str(example.get("prompt") or "").strip())
 
 
-def save_jsonl(dataset: "Dataset", path: Path) -> None:
+def save_jsonl(dataset, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as file:
         for row in dataset:
@@ -59,10 +53,10 @@ def save_jsonl(dataset: "Dataset", path: Path) -> None:
 
 
 def preprocess(
-    cache_dir: Path,
-    output_dir: Path,
-    max_samples: int | None,
-) -> None:
+    cache_dir,
+    output_dir,
+    max_samples,
+):
     from datasets import load_dataset
 
     raw = load_dataset(
@@ -96,7 +90,7 @@ def preprocess(
     )
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--output-dir",
@@ -119,7 +113,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
+def main():
     args = parse_args()
     preprocess(
         cache_dir=args.cache_dir,

@@ -16,14 +16,11 @@ Full run:
     python scripts/train_orpo.py --fp16
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 from datetime import datetime
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 import torch
 import torch.nn.functional as F
@@ -53,11 +50,11 @@ class ORPOConfig(TrainingArguments):
 # ---------------------------------------------------------------------------
 
 def tokenize_row(
-    example: dict,
-    tokenizer: AutoTokenizer,
-    max_length: int,
-    max_prompt_length: int,
-) -> dict:
+    example,
+    tokenizer,
+    max_length,
+    max_prompt_length,
+):
     """Convert one {prompt, chosen, rejected} triplet into model inputs."""
     prompt          = example["prompt"]
     chosen_response = " " + example["chosen"]
@@ -100,7 +97,7 @@ def tokenize_row(
 class ORPODataCollator:
     pad_token_id: int
 
-    def __call__(self, batch: list[dict]) -> dict[str, torch.Tensor]:
+    def __call__(self, batch):
         def pad(seqs: list[list[int]], pad_val: int) -> torch.Tensor:
             max_len = max(len(s) for s in seqs)
             return torch.tensor([s + [pad_val] * (max_len - len(s)) for s in seqs])
@@ -121,18 +118,18 @@ class ORPODataCollator:
 
 class ORPOTrainer(Trainer):
 
-    def __init__(self, beta: float, **kwargs: Any) -> None:
+    def __init__(self, beta, **kwargs):
         self.orpo_beta = beta
-        self._file_metric_sums: dict[str, float] = {}
+        self._file_metric_sums = {}
         self._file_metric_count = 0
         super().__init__(**kwargs)
 
-    def _record_file_metrics(self, **metrics: torch.Tensor) -> None:
+    def _record_file_metrics(self, **metrics):
         for name, value in metrics.items():
             self._file_metric_sums[name] = self._file_metric_sums.get(name, 0.0) + float(value.detach().cpu())
         self._file_metric_count += 1
 
-    def pop_file_metrics(self) -> dict[str, float]:
+    def pop_file_metrics(self):
         if self._file_metric_count == 0:
             return {}
         metrics = {
@@ -144,7 +141,7 @@ class ORPOTrainer(Trainer):
         return metrics
 
     @staticmethod
-    def _sequence_log_probs(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    def _sequence_log_probs(logits, labels):
         """Mean log-probability over non-masked response tokens.
 
         Args:
@@ -170,11 +167,11 @@ class ORPOTrainer(Trainer):
 
     def compute_loss(
         self,
-        model: AutoModelForCausalLM,
-        inputs: dict[str, torch.Tensor],
-        return_outputs: bool = False,
-        num_items_in_batch: int | None = None,
-    ) -> torch.Tensor | tuple:
+        model,
+        inputs,
+        return_outputs=False,
+        num_items_in_batch=None,
+    ):
         # --- Chosen forward pass (provides SFT loss) ---
         chosen_out = model(
             input_ids=inputs["chosen_input_ids"],
@@ -211,29 +208,29 @@ class ORPOTrainer(Trainer):
 # Main
 # ---------------------------------------------------------------------------
 
-def load_jsonl(path: Path) -> list[dict]:
+def load_jsonl(path):
     with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f]
 
 
-def make_log_path(log_dir: Path, run_name: str) -> Path:
+def make_log_path(log_dir, run_name):
     log_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return log_dir / f"{run_name}_{stamp}.log"
 
 
-def write_log(log_path: Path, message: str) -> None:
+def write_log(log_path, message):
     with log_path.open("a", encoding="utf-8") as f:
         f.write(message + "\n")
 
 
-def log_print(log_path: Path, message: str) -> None:
+def log_print(log_path, message):
     print(message)
     write_log(log_path, message)
 
 
 class FileLogCallback(TrainerCallback):
-    def __init__(self, log_path: Path) -> None:
+    def __init__(self, log_path):
         self.log_path = log_path
 
     def on_log(self, args, state, control, logs=None, **kwargs):
@@ -247,9 +244,9 @@ class FileLogCallback(TrainerCallback):
 
 
 class StepFileLogCallback(TrainerCallback):
-    def __init__(self, log_path: Path) -> None:
+    def __init__(self, log_path):
         self.log_path = log_path
-        self.trainer: ORPOTrainer | None = None
+        self.trainer = None
 
     def on_step_end(self, args, state, control, **kwargs):
         if self.trainer is None:
@@ -264,7 +261,7 @@ class StepFileLogCallback(TrainerCallback):
         )
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description="ORPO training without a reference model")
     parser.add_argument(
         "--model-name", default="gpt2",

@@ -10,8 +10,6 @@ Full run:
     python scripts/train_sft_raw.py --fp16
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import math
@@ -29,23 +27,23 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 # Data
 # ---------------------------------------------------------------------------
 
-def load_jsonl(path: Path) -> list[dict]:
+def load_jsonl(path):
     with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f]
 
 
-def make_log_path(log_dir: Path, run_name: str) -> Path:
+def make_log_path(log_dir, run_name):
     log_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return log_dir / f"{run_name}_{stamp}.log"
 
 
-def write_log(log_path: Path, message: str) -> None:
+def write_log(log_path, message):
     with log_path.open("a", encoding="utf-8") as f:
         f.write(message + "\n")
 
 
-def log_print(log_path: Path, message: str) -> None:
+def log_print(log_path, message):
     print(message)
     write_log(log_path, message)
 
@@ -55,11 +53,11 @@ class SFTDataset(Dataset):
 
     def __init__(
         self,
-        rows: list[dict],
-        tokenizer: AutoTokenizer,
-        max_length: int,
-        max_prompt_length: int,
-    ) -> None:
+        rows,
+        tokenizer,
+        max_length,
+        max_prompt_length,
+    ):
         self.samples = []
         for row in rows:
             prompt_ids = tokenizer.encode(row["prompt"], add_special_tokens=True)
@@ -79,18 +77,18 @@ class SFTDataset(Dataset):
             labels = [-100] * len(prompt_ids) + response_ids
             self.samples.append({"input_ids": input_ids, "labels": labels})
 
-    def __len__(self) -> int:
+    def __len__(self):
         return len(self.samples)
 
-    def __getitem__(self, idx: int) -> dict:
+    def __getitem__(self, idx):
         return self.samples[idx]
 
 
 class SFTCollator:
-    def __init__(self, pad_token_id: int) -> None:
+    def __init__(self, pad_token_id):
         self.pad_id = pad_token_id
 
-    def __call__(self, batch: list[dict]) -> dict[str, torch.Tensor]:
+    def __call__(self, batch):
         def pad(seqs: list[list[int]], pad_val: int) -> torch.Tensor:
             max_len = max(len(s) for s in seqs)
             return torch.tensor([s + [pad_val] * (max_len - len(s)) for s in seqs])
@@ -106,9 +104,9 @@ class SFTCollator:
 # ---------------------------------------------------------------------------
 
 def compute_sft_loss(
-    logits: torch.Tensor,
-    labels: torch.Tensor,
-) -> torch.Tensor:
+    logits,
+    labels,
+):
     """Teacher-forcing cross-entropy on non-masked label positions.
 
     logits : [B, T, V]
@@ -132,7 +130,7 @@ def compute_sft_loss(
 # LR schedule
 # ---------------------------------------------------------------------------
 
-def cosine_schedule(step: int, total: int, min_ratio: float = 0.1) -> float:
+def cosine_schedule(step, total, min_ratio=0.1):
     if total <= 1:
         return 1.0
     p = step / max(1, total - 1)
@@ -143,7 +141,7 @@ def cosine_schedule(step: int, total: int, min_ratio: float = 0.1) -> float:
 # Main
 # ---------------------------------------------------------------------------
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description="Raw SFT training (no TRL)")
     parser.add_argument("--model-name",        default="gpt2")
     parser.add_argument("--train-file", type=Path, default=Path("data/processed/training/hh_rlhf/hh_rlhf_train.jsonl"))

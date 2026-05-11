@@ -8,22 +8,16 @@ The original dataset stores each example as two full dialogue transcripts:
     rejected: the dispreferred assistant response
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from datasets import Dataset
 
 
 ASSISTANT_MARKER = "Assistant:"
 
 
-def normalize_text(text: str) -> str:
+def normalize_text(text):
     """Normalize whitespace while preserving dialogue line breaks."""
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"[ \t]+", " ", text)
@@ -31,7 +25,7 @@ def normalize_text(text: str) -> str:
     return text.strip()
 
 
-def common_prefix_len(left: str, right: str) -> int:
+def common_prefix_len(left, right):
     limit = min(len(left), len(right))
     idx = 0
     while idx < limit and left[idx] == right[idx]:
@@ -39,7 +33,7 @@ def common_prefix_len(left: str, right: str) -> int:
     return idx
 
 
-def split_preference_pair(example: dict[str, Any]) -> dict[str, str]:
+def split_preference_pair(example):
     """Split HH-RLHF chosen/rejected full transcripts into a training triple."""
     chosen_full = normalize_text(example["chosen"])
     rejected_full = normalize_text(example["rejected"])
@@ -65,11 +59,11 @@ def split_preference_pair(example: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def is_valid_example(example: dict[str, str]) -> bool:
+def is_valid_example(example):
     return bool(example["prompt"] and example["chosen"] and example["rejected"])
 
 
-def save_jsonl(dataset: "Dataset", path: Path) -> None:
+def save_jsonl(dataset, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as file:
         for row in dataset:
@@ -77,12 +71,12 @@ def save_jsonl(dataset: "Dataset", path: Path) -> None:
 
 
 def preprocess(
-    data_dir: str,
-    cache_dir: Path,
-    output_dir: Path,
-    max_train_samples: int | None,
-    max_test_samples: int | None,
-) -> None:
+    data_dir,
+    cache_dir,
+    output_dir,
+    max_train_samples,
+    max_test_samples,
+):
     from datasets import DatasetDict, load_dataset
 
     raw = load_dataset(
@@ -115,7 +109,7 @@ def preprocess(
     print(f"Saved test rows:  {len(test):,} -> {output_dir / 'hh_rlhf_test.jsonl'}")
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--data-dir",
@@ -152,7 +146,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
+def main():
     args = parse_args()
     preprocess(
         data_dir=args.data_dir,

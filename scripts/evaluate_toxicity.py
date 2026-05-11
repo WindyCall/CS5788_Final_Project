@@ -1,25 +1,3 @@
-"""Toxicity evaluation using unitary/toxic-bert, plus benchmarking metrics.
-
-Run once per model:
-    python scripts/evaluate_toxicity.py --model-path gpt2           --model-label base
-    python scripts/evaluate_toxicity.py --model-path models/sft     --model-label sft
-    python scripts/evaluate_toxicity.py --model-path models/dpo     --model-label dpo
-    python scripts/evaluate_toxicity.py --model-path models/orpo    --model-label orpo
-
-Each run writes:
-    results/toxicity/<label>.json   per-sample results + benchmark metrics
-    results/toxicity/summary.json   comparison table across all completed runs
-
-Benchmark metrics captured (useful for final report):
-    - Toxicity: avg_toxicity_score, prob_toxicity
-    - Model:    num_params, num_trainable_params, model_size_mb
-    - Speed:    total_generation_time_s, avg_generation_time_s, tokens_per_second
-    - Memory:   peak_inference_memory_mb  (GPU) or rss_memory_mb (CPU)
-    - Quality:  perplexity on HH-RLHF test set  (--eval-file)
-"""
-
-from __future__ import annotations
-
 import argparse
 import json
 import math
@@ -39,7 +17,7 @@ SUMMARY_FILE = Path("results/toxicity/summary.json")
 # Data helpers
 # ---------------------------------------------------------------------------
 
-def load_jsonl(path: Path) -> list[dict]:
+def load_jsonl(path):
     with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f]
 
@@ -48,7 +26,7 @@ def load_jsonl(path: Path) -> list[dict]:
 # Model profiling
 # ---------------------------------------------------------------------------
 
-def profile_model(model: AutoModelForCausalLM) -> dict:
+def profile_model(model):
     total      = sum(p.numel() for p in model.parameters())
     trainable  = sum(p.numel() for p in model.parameters() if p.requires_grad)
     # Estimate disk size: count bytes per parameter
@@ -64,12 +42,12 @@ def profile_model(model: AutoModelForCausalLM) -> dict:
 # Memory helpers
 # ---------------------------------------------------------------------------
 
-def reset_memory_stats(device: torch.device) -> None:
+def reset_memory_stats(device):
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
 
 
-def peak_memory_mb(device: torch.device) -> float:
+def peak_memory_mb(device):
     if device.type == "cuda":
         return round(torch.cuda.max_memory_allocated(device) / 1024 ** 2, 1)
     # CPU fallback via /proc/self/status (Linux/Colab) or psutil if available
@@ -85,18 +63,18 @@ def peak_memory_mb(device: torch.device) -> float:
 # ---------------------------------------------------------------------------
 
 def generate_continuations(
-    model: AutoModelForCausalLM,
-    tokenizer: AutoTokenizer,
-    prompts: list[str],
-    max_new_tokens: int,
-    batch_size: int,
-    device: torch.device,
-) -> tuple[list[str], float]:
+    model,
+    tokenizer,
+    prompts,
+    max_new_tokens,
+    batch_size,
+    device,
+):
     """Returns (continuations, total_wall_time_seconds)."""
     original_padding_side = tokenizer.padding_side
     tokenizer.padding_side = "left"
 
-    continuations: list[str] = []
+    continuations = []
     t0 = time.perf_counter()
 
     for i in range(0, len(prompts), batch_size):
@@ -137,13 +115,13 @@ def generate_continuations(
 # ---------------------------------------------------------------------------
 
 def compute_perplexity(
-    model: AutoModelForCausalLM,
-    tokenizer: AutoTokenizer,
-    eval_file: Path,
-    device: torch.device,
-    max_samples: int = 500,
-    max_length: int  = 512,
-) -> float:
+    model,
+    tokenizer,
+    eval_file,
+    device,
+    max_samples=500,
+    max_length=512,
+):
     """Compute perplexity on HH-RLHF test set (prompt + chosen)."""
     rows = load_jsonl(eval_file)[:max_samples]
     texts = [r["prompt"] + " " + r["chosen"] for r in rows]
@@ -174,14 +152,14 @@ def compute_perplexity(
 # Toxicity scoring
 # ---------------------------------------------------------------------------
 
-def score_toxicity(texts: list[str], batch_size: int, device: int) -> list[float]:
+def score_toxicity(texts, batch_size, device):
     classifier = pipeline(
         "text-classification",
         model=TOXIC_BERT,
         device=device,
         top_k=None,
     )
-    scores: list[float] = []
+    scores = []
     for i in range(0, len(texts), batch_size):
         batch       = texts[i : i + batch_size]
         safe_batch  = [t.strip() if t.strip() else "." for t in batch]
@@ -215,9 +193,9 @@ SUMMARY_KEYS = [
 ]
 
 
-def update_summary(result: dict) -> None:
+def update_summary(result):
     SUMMARY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    summary: dict = {}
+    summary = {}
     if SUMMARY_FILE.exists():
         with SUMMARY_FILE.open(encoding="utf-8") as f:
             summary = json.load(f)
@@ -226,7 +204,7 @@ def update_summary(result: dict) -> None:
         json.dump(summary, f, indent=2, ensure_ascii=False)
 
 
-def print_summary() -> None:
+def print_summary():
     if not SUMMARY_FILE.exists():
         return
     with SUMMARY_FILE.open(encoding="utf-8") as f:
@@ -269,7 +247,7 @@ def print_summary() -> None:
 # Main
 # ---------------------------------------------------------------------------
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description="Toxicity evaluation + benchmark metrics")
     parser.add_argument("--model-path",  required=True)
     parser.add_argument("--model-label", required=True, help="base | sft | dpo | orpo")
