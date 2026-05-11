@@ -123,7 +123,25 @@ class ORPOTrainer(Trainer):
 
     def __init__(self, beta: float, **kwargs: Any) -> None:
         self.orpo_beta = beta
+        self._file_metric_sums: dict[str, float] = {}
+        self._file_metric_count = 0
         super().__init__(**kwargs)
+
+    def _record_file_metrics(self, **metrics: torch.Tensor) -> None:
+        for name, value in metrics.items():
+            self._file_metric_sums[name] = self._file_metric_sums.get(name, 0.0) + float(value.detach().cpu())
+        self._file_metric_count += 1
+
+    def pop_file_metrics(self) -> dict[str, float]:
+        if self._file_metric_count == 0:
+            return {}
+        metrics = {
+            name: value / self._file_metric_count
+            for name, value in self._file_metric_sums.items()
+        }
+        self._file_metric_sums = {}
+        self._file_metric_count = 0
+        return metrics
 
     @staticmethod
     def _sequence_log_probs(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
@@ -183,6 +201,8 @@ class ORPOTrainer(Trainer):
         or_loss  = -F.logsigmoid(log_or).mean()
 
         loss = sft_loss + self.orpo_beta * or_loss
+        if model.training:
+            self._record_file_metrics(loss=loss, sft_loss=sft_loss, or_loss=or_loss)
 
         return (loss, chosen_out) if return_outputs else loss
 
@@ -223,6 +243,24 @@ class FileLogCallback(TrainerCallback):
         write_log(
             self.log_path,
             f"trainer_log step={state.global_step} epoch={state.epoch}: {payload}",
+        )
+
+
+class StepFileLogCallback(TrainerCallback):
+    def __init__(self, log_path: Path) -> None:
+        self.log_path = log_path
+        self.trainer: ORPOTrainer | None = None
+
+    def on_step_end(self, args, state, control, **kwargs):
+        if self.trainer is None:
+            return
+        metrics = self.trainer.pop_file_metrics()
+        if not metrics:
+            return
+        metric_text = " | ".join(f"{name} {value:.4f}" for name, value in metrics.items())
+        write_log(
+            self.log_path,
+            f"train_step epoch {state.epoch} | step {state.global_step}/{state.max_steps} | {metric_text}",
         )
 
 
@@ -296,6 +334,7 @@ def main() -> None:
         report_to="none",
     )
 
+    step_file_logger = StepFileLogCallback(log_path)
     trainer = ORPOTrainer(
         beta=args.beta,
         model=model,
@@ -303,8 +342,9 @@ def main() -> None:
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=ORPODataCollator(pad_token_id=tokenizer.pad_token_id),
-        callbacks=[FileLogCallback(log_path)],
+        callbacks=[FileLogCallback(log_path), step_file_logger],
     )
+    step_file_logger.trainer = trainer
 
     trainer.train()
     history_path = log_path.with_suffix(".json")

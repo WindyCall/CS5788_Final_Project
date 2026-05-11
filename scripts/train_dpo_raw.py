@@ -273,8 +273,12 @@ def main() -> None:
     scaler      = torch.cuda.amp.GradScaler(enabled=use_fp16)
 
     global_step   = 0
-    running_loss  = 0.0
-    running_margin = 0.0
+    step_loss_sum = 0.0
+    step_margin_sum = 0.0
+    step_batches = 0
+    console_loss_sum = 0.0
+    console_margin_sum = 0.0
+    console_steps = 0
 
     for epoch in range(args.epochs):
         policy.train()
@@ -307,8 +311,9 @@ def main() -> None:
 
             with torch.no_grad():
                 margin = args.beta * ((c_lp_pi - c_lp_ref) - (r_lp_pi - r_lp_ref))
-                running_loss   += loss.item()
-                running_margin += margin.mean().item()
+                step_loss_sum += loss.item()
+                step_margin_sum += margin.mean().item()
+                step_batches += 1
 
             if (i + 1) % args.grad_accum == 0 or (i + 1) == len(train_loader):
                 scaler.unscale_(optimizer)
@@ -319,15 +324,41 @@ def main() -> None:
                 optimizer.zero_grad(set_to_none=True)
                 global_step += 1
 
+                step_loss = step_loss_sum / max(1, step_batches)
+                step_margin = step_margin_sum / max(1, step_batches)
+                write_log(
+                    log_path,
+                    f"train_step epoch {epoch} | step {global_step}/{total_steps} "
+                    f"| loss {step_loss:.4f} | reward_margin {step_margin:.4f}"
+                )
+                console_loss_sum += step_loss
+                console_margin_sum += step_margin
+                console_steps += 1
+                step_loss_sum = 0.0
+                step_margin_sum = 0.0
+                step_batches = 0
+
                 if global_step % args.log_steps == 0:
-                    denom = args.log_steps * args.grad_accum
                     log_print(
                         log_path,
                         f"epoch {epoch} | step {global_step}/{total_steps} "
-                        f"| loss {running_loss / denom:.4f} "
-                        f"| reward_margin {running_margin / denom:.4f}"
+                        f"| loss {console_loss_sum / max(1, console_steps):.4f} "
+                        f"| reward_margin {console_margin_sum / max(1, console_steps):.4f}"
                     )
-                    running_loss = running_margin = 0.0
+                    console_loss_sum = 0.0
+                    console_margin_sum = 0.0
+                    console_steps = 0
+
+        if console_steps:
+            log_print(
+                log_path,
+                f"epoch {epoch} | step {global_step}/{total_steps} "
+                f"| loss {console_loss_sum / console_steps:.4f} "
+                f"| reward_margin {console_margin_sum / console_steps:.4f}"
+            )
+            console_loss_sum = 0.0
+            console_margin_sum = 0.0
+            console_steps = 0
 
         # Eval
         policy.eval()

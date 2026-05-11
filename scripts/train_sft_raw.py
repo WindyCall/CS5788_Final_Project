@@ -200,7 +200,10 @@ def main() -> None:
     for epoch in range(args.epochs):
         model.train()
         optimizer.zero_grad(set_to_none=True)
-        running_loss = 0.0
+        step_loss_sum = 0.0
+        step_batches = 0
+        console_loss_sum = 0.0
+        console_steps = 0
 
         for i, batch in enumerate(train_loader):
             input_ids = batch["input_ids"].to(device)
@@ -212,7 +215,8 @@ def main() -> None:
                 loss = compute_sft_loss(out.logits, labels) / args.grad_accum
 
             scaler.scale(loss).backward()
-            running_loss += loss.item() * args.grad_accum
+            step_loss_sum += loss.item() * args.grad_accum
+            step_batches += 1
 
             if (i + 1) % args.grad_accum == 0 or (i + 1) == len(train_loader):
                 scaler.unscale_(optimizer)
@@ -223,9 +227,22 @@ def main() -> None:
                 optimizer.zero_grad(set_to_none=True)
                 global_step += 1
 
+                step_loss = step_loss_sum / max(1, step_batches)
+                write_log(log_path, f"train_step epoch {epoch} | step {global_step}/{total_steps} | loss {step_loss:.4f}")
+                console_loss_sum += step_loss
+                console_steps += 1
+                step_loss_sum = 0.0
+                step_batches = 0
+
                 if global_step % args.log_steps == 0:
-                    log_print(log_path, f"epoch {epoch} | step {global_step}/{total_steps} | loss {running_loss / args.log_steps:.4f}")
-                    running_loss = 0.0
+                    log_print(log_path, f"epoch {epoch} | step {global_step}/{total_steps} | loss {console_loss_sum / max(1, console_steps):.4f}")
+                    console_loss_sum = 0.0
+                    console_steps = 0
+
+        if console_steps:
+            log_print(log_path, f"epoch {epoch} | step {global_step}/{total_steps} | loss {console_loss_sum / console_steps:.4f}")
+            console_loss_sum = 0.0
+            console_steps = 0
 
         # Eval
         model.eval()
