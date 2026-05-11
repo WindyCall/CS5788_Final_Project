@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from datetime import datetime
 from pathlib import Path
 
 import torch
@@ -34,6 +35,22 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 def load_jsonl(path: Path) -> list[dict]:
     with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f]
+
+
+def make_log_path(log_dir: Path, run_name: str) -> Path:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return log_dir / f"{run_name}_{stamp}.log"
+
+
+def write_log(log_path: Path, message: str) -> None:
+    with log_path.open("a", encoding="utf-8") as f:
+        f.write(message + "\n")
+
+
+def log_print(log_path: Path, message: str) -> None:
+    print(message)
+    write_log(log_path, message)
 
 
 class DPODataset(Dataset):
@@ -207,8 +224,15 @@ def main() -> None:
     parser.add_argument("--max-prompt-length", type=int,   default=256)
     parser.add_argument("--max-samples",       type=int,   default=None)
     parser.add_argument("--log-steps",         type=int,   default=50)
+    parser.add_argument("--log-dir", type=Path, default=Path("results/training_logs/raw_runs"))
     parser.add_argument("--fp16",              action="store_true")
     args = parser.parse_args()
+    if args.log_steps <= 0:
+        raise ValueError("--log-steps must be a positive integer")
+
+    log_path = make_log_path(args.log_dir, "train_dpo_raw")
+    log_print(log_path, f"Logging to {log_path}")
+    write_log(log_path, json.dumps(vars(args), default=str, sort_keys=True))
 
     device    = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     use_fp16  = args.fp16 and torch.cuda.is_available()
@@ -241,7 +265,7 @@ def main() -> None:
         shuffle=False, collate_fn=collator,
     )
 
-    print(f"Train: {len(train_rows)} examples | Eval: {len(eval_rows)} examples")
+    log_print(log_path, f"Train: {len(train_rows)} examples | Eval: {len(eval_rows)} examples")
 
     total_steps = math.ceil(len(train_loader) / args.grad_accum) * args.epochs
     optimizer   = torch.optim.AdamW(policy.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8)
@@ -297,7 +321,8 @@ def main() -> None:
 
                 if global_step % args.log_steps == 0:
                     denom = args.log_steps * args.grad_accum
-                    print(
+                    log_print(
+                        log_path,
                         f"epoch {epoch} | step {global_step}/{total_steps} "
                         f"| loss {running_loss / denom:.4f} "
                         f"| reward_margin {running_margin / denom:.4f}"
@@ -336,12 +361,12 @@ def main() -> None:
                 eval_losses.append(eloss.item())
 
         avg_eval = sum(eval_losses) / len(eval_losses)
-        print(f"epoch {epoch} | eval_loss {avg_eval:.4f}")
+        log_print(log_path, f"epoch {epoch} | eval_loss {avg_eval:.4f}")
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     policy.save_pretrained(str(args.output_dir))
     tokenizer.save_pretrained(str(args.output_dir))
-    print(f"DPO model saved to {args.output_dir}")
+    log_print(log_path, f"DPO model saved to {args.output_dir}")
 
 
 if __name__ == "__main__":

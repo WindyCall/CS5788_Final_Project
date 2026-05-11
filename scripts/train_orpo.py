@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,7 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     Trainer,
+    TrainerCallback,
     TrainingArguments,
 )
 
@@ -194,6 +196,36 @@ def load_jsonl(path: Path) -> list[dict]:
         return [json.loads(line) for line in f]
 
 
+def make_log_path(log_dir: Path, run_name: str) -> Path:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return log_dir / f"{run_name}_{stamp}.log"
+
+
+def write_log(log_path: Path, message: str) -> None:
+    with log_path.open("a", encoding="utf-8") as f:
+        f.write(message + "\n")
+
+
+def log_print(log_path: Path, message: str) -> None:
+    print(message)
+    write_log(log_path, message)
+
+
+class FileLogCallback(TrainerCallback):
+    def __init__(self, log_path: Path) -> None:
+        self.log_path = log_path
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if not logs:
+            return
+        payload = json.dumps(logs, default=str, sort_keys=True)
+        write_log(
+            self.log_path,
+            f"trainer_log step={state.global_step} epoch={state.epoch}: {payload}",
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="ORPO training without a reference model")
     parser.add_argument(
@@ -211,8 +243,16 @@ def main() -> None:
     parser.add_argument("--max-length",        type=int,   default=512)
     parser.add_argument("--max-prompt-length", type=int,   default=256)
     parser.add_argument("--max-samples",       type=int,   default=None)
+    parser.add_argument("--log-steps",         type=int,   default=50)
+    parser.add_argument("--log-dir", type=Path, default=Path("results/training_logs/raw_runs"))
     parser.add_argument("--fp16", action="store_true")
     args = parser.parse_args()
+    if args.log_steps <= 0:
+        raise ValueError("--log-steps must be a positive integer")
+
+    log_path = make_log_path(args.log_dir, "train_orpo")
+    log_print(log_path, f"Logging to {log_path}")
+    write_log(log_path, json.dumps(vars(args), default=str, sort_keys=True))
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     if tokenizer.pad_token is None:
@@ -231,7 +271,7 @@ def main() -> None:
     train_dataset = Dataset.from_list([tokenize(r) for r in train_rows])
     eval_dataset  = Dataset.from_list([tokenize(r) for r in eval_rows])
 
-    print(f"Train examples: {len(train_dataset)} | Eval examples: {len(eval_dataset)}")
+    log_print(log_path, f"Train examples: {len(train_dataset)} | Eval examples: {len(eval_dataset)}")
 
     config = ORPOConfig(
         output_dir=str(args.output_dir),
@@ -247,7 +287,8 @@ def main() -> None:
         save_strategy="epoch",
         save_total_limit=1,
         load_best_model_at_end=True,
-        logging_steps=100,
+        logging_steps=args.log_steps,
+        logging_dir=str(args.log_dir / "trainer"),
         fp16=args.fp16,
         bf16=False,
         use_cpu=not torch.cuda.is_available(),
@@ -262,12 +303,17 @@ def main() -> None:
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=ORPODataCollator(pad_token_id=tokenizer.pad_token_id),
+        callbacks=[FileLogCallback(log_path)],
     )
 
     trainer.train()
+    history_path = log_path.with_suffix(".json")
+    with history_path.open("w", encoding="utf-8") as f:
+        json.dump(trainer.state.log_history, f, indent=2, default=str)
+    log_print(log_path, f"Trainer log history saved to {history_path}")
     trainer.save_model(str(args.output_dir))
     tokenizer.save_pretrained(str(args.output_dir))
-    print(f"ORPO model saved to {args.output_dir}")
+    log_print(log_path, f"ORPO model saved to {args.output_dir}")
 
 
 if __name__ == "__main__":
