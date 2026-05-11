@@ -1,13 +1,3 @@
-"""Preprocess Anthropic HH-RLHF into prompt/chosen/rejected JSONL files.
-
-The original dataset stores each example as two full dialogue transcripts:
-`chosen` and `rejected`. For SFT/DPO/ORPO training we split them into:
-
-    prompt:   the shared dialogue prefix ending at the final "Assistant:"
-    chosen:   the preferred assistant response
-    rejected: the dispreferred assistant response
-"""
-
 import argparse
 import json
 import re

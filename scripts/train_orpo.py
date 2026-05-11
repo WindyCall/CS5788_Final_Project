@@ -1,21 +1,3 @@
-"""ORPO training: monolithic preference optimisation without a reference model.
-
-ORPOTrainer was removed in TRL 1.x, so this script provides a self-contained
-implementation using a standard HuggingFace Trainer subclass.
-
-ORPO loss (Hong et al., 2024):
-    L = L_SFT + β · L_OR
-    L_SFT  = cross-entropy on chosen response tokens
-    L_OR   = -log σ(log_OR),  log_OR = log_odds(chosen) - log_odds(rejected)
-    log_odds(y|x) = log P(y|x) - log(1 - P(y|x))
-
-Usage (smoke-test):
-    python scripts/train_orpo.py --max-samples 200 --epochs 1 --fp16
-
-Full run:
-    python scripts/train_orpo.py --fp16
-"""
-
 import argparse
 import json
 from datetime import datetime
@@ -34,20 +16,11 @@ from transformers import (
 )
 
 
-# ---------------------------------------------------------------------------
-# Config
-# ---------------------------------------------------------------------------
-
 @dataclass
 class ORPOConfig(TrainingArguments):
     beta: float = field(default=0.1, metadata={"help": "Odds-ratio penalty weight (λ in the paper)"})
     max_length: int = field(default=512,  metadata={"help": "Max total sequence length (prompt + response)"})
     max_prompt_length: int = field(default=256, metadata={"help": "Max prompt length in tokens"})
-
-
-# ---------------------------------------------------------------------------
-# Tokenisation helpers
-# ---------------------------------------------------------------------------
 
 def tokenize_row(
     example,
@@ -89,10 +62,6 @@ def tokenize_row(
     }
 
 
-# ---------------------------------------------------------------------------
-# Data collator
-# ---------------------------------------------------------------------------
-
 @dataclass
 class ORPODataCollator:
     pad_token_id: int
@@ -111,10 +80,6 @@ class ORPODataCollator:
             "rejected_labels":         pad([x["rejected_labels"]         for x in batch], -100),
         }
 
-
-# ---------------------------------------------------------------------------
-# Trainer
-# ---------------------------------------------------------------------------
 
 class ORPOTrainer(Trainer):
 
@@ -203,10 +168,6 @@ class ORPOTrainer(Trainer):
 
         return (loss, chosen_out) if return_outputs else loss
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def load_jsonl(path):
     with path.open(encoding="utf-8") as f:

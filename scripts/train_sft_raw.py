@@ -1,15 +1,3 @@
-"""SFT training — raw PyTorch loop, no TRL/Trainer.
-
-Loss: teacher-forcing cross-entropy on response tokens only.
-The prompt tokens are masked out so the model is only trained on chosen replies.
-
-Usage (smoke-test):
-    python scripts/train_sft_raw.py --max-samples 200 --epochs 1 --fp16
-
-Full run:
-    python scripts/train_sft_raw.py --fp16
-"""
-
 import argparse
 import json
 import math
@@ -22,10 +10,6 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-
-# ---------------------------------------------------------------------------
-# Data
-# ---------------------------------------------------------------------------
 
 def load_jsonl(path):
     with path.open(encoding="utf-8") as f:
@@ -98,11 +82,6 @@ class SFTCollator:
         attn_mask = (input_ids != self.pad_id).long()
         return {"input_ids": input_ids, "attention_mask": attn_mask, "labels": labels}
 
-
-# ---------------------------------------------------------------------------
-# Loss
-# ---------------------------------------------------------------------------
-
 def compute_sft_loss(
     logits,
     labels,
@@ -126,20 +105,12 @@ def compute_sft_loss(
     return (loss * mask_flat).sum() / mask_flat.sum().clamp(min=1.0)
 
 
-# ---------------------------------------------------------------------------
-# LR schedule
-# ---------------------------------------------------------------------------
-
 def cosine_schedule(step, total, min_ratio=0.1):
     if total <= 1:
         return 1.0
     p = step / max(1, total - 1)
     return min_ratio + (1.0 - min_ratio) * 0.5 * (1.0 + math.cos(math.pi * p))
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="Raw SFT training (no TRL)")

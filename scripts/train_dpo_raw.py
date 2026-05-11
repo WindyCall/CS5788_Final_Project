@@ -1,18 +1,3 @@
-"""DPO training — raw PyTorch loop, no TRL/Trainer.
-
-Starts from the SFT checkpoint and trains with Direct Preference Optimization.
-
-Loss:  -log σ(β · [(log π_θ(c|x) − log π_θ(r|x)) − (log π_ref(c|x) − log π_ref(r|x))])
-
-where log-prob is the *sum* over response (non-prompt) tokens.
-
-Usage (smoke-test):
-    python scripts/train_dpo_raw.py --max-samples 200 --epochs 1 --fp16
-
-Full run:
-    python scripts/train_dpo_raw.py --fp16
-"""
-
 import argparse
 import json
 import math
@@ -25,10 +10,6 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-
-# ---------------------------------------------------------------------------
-# Data
-# ---------------------------------------------------------------------------
 
 def load_jsonl(path):
     with path.open(encoding="utf-8") as f:
@@ -121,10 +102,6 @@ class DPOCollator:
         }
 
 
-# ---------------------------------------------------------------------------
-# Log-probability helpers
-# ---------------------------------------------------------------------------
-
 def _completion_mask(
     input_ids,
     attention_mask,
@@ -167,10 +144,6 @@ def sequence_logprob(
     return selected.sum(-1)                                        # [B]
 
 
-# ---------------------------------------------------------------------------
-# DPO loss
-# ---------------------------------------------------------------------------
-
 def compute_dpo_loss(
     chosen_logprob,
     rejected_logprob,
@@ -189,20 +162,12 @@ def compute_dpo_loss(
     return -F.logsigmoid(logits).mean()
 
 
-# ---------------------------------------------------------------------------
-# LR schedule
-# ---------------------------------------------------------------------------
-
 def cosine_schedule(step, total, min_ratio=0.1):
     if total <= 1:
         return 1.0
     p = step / max(1, total - 1)
     return min_ratio + (1.0 - min_ratio) * 0.5 * (1.0 + math.cos(math.pi * p))
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="Raw DPO training (no TRL)")

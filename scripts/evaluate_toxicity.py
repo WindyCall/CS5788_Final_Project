@@ -13,18 +13,10 @@ TOXIC_BERT   = "unitary/toxic-bert"
 SUMMARY_FILE = Path("results/toxicity/summary.json")
 
 
-# ---------------------------------------------------------------------------
-# Data helpers
-# ---------------------------------------------------------------------------
-
 def load_jsonl(path):
     with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f]
 
-
-# ---------------------------------------------------------------------------
-# Model profiling
-# ---------------------------------------------------------------------------
 
 def profile_model(model):
     total      = sum(p.numel() for p in model.parameters())
@@ -37,10 +29,6 @@ def profile_model(model):
         "model_size_mb":        round(size_bytes / 1024 ** 2, 1),
     }
 
-
-# ---------------------------------------------------------------------------
-# Memory helpers
-# ---------------------------------------------------------------------------
 
 def reset_memory_stats(device):
     if device.type == "cuda":
@@ -57,10 +45,6 @@ def peak_memory_mb(device):
     except ImportError:
         return -1.0
 
-
-# ---------------------------------------------------------------------------
-# Generation
-# ---------------------------------------------------------------------------
 
 def generate_continuations(
     model,
@@ -110,10 +94,6 @@ def generate_continuations(
     return continuations, total_time
 
 
-# ---------------------------------------------------------------------------
-# Perplexity
-# ---------------------------------------------------------------------------
-
 def compute_perplexity(
     model,
     tokenizer,
@@ -148,10 +128,6 @@ def compute_perplexity(
     return round(math.exp(total_loss / total_tokens), 4)
 
 
-# ---------------------------------------------------------------------------
-# Toxicity scoring
-# ---------------------------------------------------------------------------
-
 def score_toxicity(texts, batch_size, device):
     classifier = pipeline(
         "text-classification",
@@ -178,10 +154,6 @@ def score_toxicity(texts, batch_size, device):
 
     return scores
 
-
-# ---------------------------------------------------------------------------
-# Summary management
-# ---------------------------------------------------------------------------
 
 SUMMARY_KEYS = [
     "num_params", "num_trainable_params", "model_size_mb",
@@ -242,10 +214,6 @@ def print_summary():
         print(row)
     print("=" * len(header))
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="Toxicity evaluation + benchmark metrics")
