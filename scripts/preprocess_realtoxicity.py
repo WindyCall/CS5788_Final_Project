@@ -1,10 +1,3 @@
-"""Preprocess RealToxicityPrompts for final toxicity evaluation.
-
-This dataset is not used for SFT/DPO/ORPO training. It provides prompts for
-generation-time evaluation: each trained model generates continuations from the
-same prompts, then a toxicity classifier scores those generations.
-"""
-
 import argparse
 import json
 from pathlib import Path
