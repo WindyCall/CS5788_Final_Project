@@ -325,21 +325,6 @@ All runs: 1 epoch · 2 656 optimizer steps · cosine LR schedule · AdamW (β₁
 
 ---
 
-## Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `torch` | Model training and inference |
-| `transformers` | Model loading, tokenizer, Trainer |
-| `trl` | Referenced in model cards; ORPO uses `TrainingArguments` subclass |
-| `datasets` | ORPO dataset handling |
-| `accelerate` | Distributed / mixed-precision utilities |
-| `pandas`, `pyarrow` | Data preprocessing |
-
-See `requirements.txt` for pinned versions.
-
----
-
 ## References
 
 - Rafailov et al. (2023). *Direct Preference Optimization: Your Language Model is Secretly a Reward Model.* NeurIPS 2023.
