@@ -46,14 +46,7 @@ def peak_memory_mb(device):
         return -1.0
 
 
-def generate_continuations(
-    model,
-    tokenizer,
-    prompts,
-    max_new_tokens,
-    batch_size,
-    device,
-):
+def generate_continuations(model, tokenizer, prompts, max_new_tokens, batch_size, device):
     """Returns (continuations, total_wall_time_seconds)."""
     original_padding_side = tokenizer.padding_side
     tokenizer.padding_side = "left"
