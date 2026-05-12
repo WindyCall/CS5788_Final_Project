@@ -39,7 +39,7 @@ def tokenize_row(
         prompt_ids = prompt_ids[:max_prompt_length]
 
     prompt_len = len(prompt_ids)
-    remaining  = max_length - prompt_len
+    remaining = max_length - prompt_len
 
     # Tokenise responses without re-adding BOS
     chosen_ids = tokenizer.encode(chosen_response,   add_special_tokens=False)[:remaining]
