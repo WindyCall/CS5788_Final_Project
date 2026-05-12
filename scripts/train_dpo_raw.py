@@ -96,11 +96,7 @@ class DPOCollator:
         }
 
 
-def _completion_mask(
-    input_ids,
-    attention_mask,
-    prompt_lens,
-):
+def completion_mask(input_ids, attention_mask, prompt_lens):
     """Binary mask [B, T-1]: 1 for response tokens, 0 for prompt/padding.
 
     We score positions t where:
@@ -117,12 +113,7 @@ def _completion_mask(
     return (after_prompt & not_pad).float()
 
 
-def sequence_logprob(
-    model_logits,
-    input_ids,
-    attention_mask,
-    prompt_lens,
-):
+def sequence_logprob(model_logits, input_ids, attention_mask, prompt_lens):
     """Sum of log-probs over completion tokens.
 
     model_logits : [B, T, V]
@@ -130,7 +121,7 @@ def sequence_logprob(
     """
     log_probs = F.log_softmax(model_logits[:, :-1, :], dim=-1)   # [B, T-1, V]
     targets = input_ids[:, 1:].clone()                          # [B, T-1]
-    mask = _completion_mask(input_ids, attention_mask, prompt_lens)  # [B, T-1]
+    mask = completion_mask(input_ids, attention_mask, prompt_lens)  # [B, T-1]
 
     # Gather log-prob of the actual next token
     selected = log_probs.gather(2, targets.unsqueeze(-1)).squeeze(-1)  # [B, T-1]
