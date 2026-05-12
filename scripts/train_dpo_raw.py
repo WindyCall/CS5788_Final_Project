@@ -48,13 +48,7 @@ class DPODataset(Dataset):
 class DPOCollator:
     """Tokenise chosen/rejected full sequences and record prompt length."""
 
-    def __init__(
-        self,
-        tokenizer,
-        max_length,
-        max_prompt_length,
-        device,
-    ):
+    def __init__(self, tokenizer, max_length, max_prompt_length, device):
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.max_prompt_length = max_prompt_length
