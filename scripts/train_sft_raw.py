@@ -35,13 +35,7 @@ def log_print(log_path, message):
 class SFTDataset(Dataset):
     """Tokenises prompt+chosen pairs; labels mask out prompt tokens."""
 
-    def __init__(
-        self,
-        rows,
-        tokenizer,
-        max_length,
-        max_prompt_length,
-    ):
+    def __init__(self, rows, tokenizer, max_length, max_prompt_length):
         self.samples = []
         for row in rows:
             prompt_ids = tokenizer.encode(row["prompt"], add_special_tokens=True)
@@ -82,10 +76,7 @@ class SFTCollator:
         attn_mask = (input_ids != self.pad_id).long()
         return {"input_ids": input_ids, "attention_mask": attn_mask, "labels": labels}
 
-def compute_sft_loss(
-    logits,
-    labels,
-):
+def compute_sft_loss(logits, labels):
     """Teacher-forcing cross-entropy on non-masked label positions.
 
     logits : [B, T, V]
