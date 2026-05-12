@@ -197,25 +197,25 @@ def main():
     log_print(log_path, f"Logging to {log_path}")
     write_log(log_path, json.dumps(vars(args), default=str, sort_keys=True))
 
-    device    = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    use_fp16  = args.fp16 and torch.cuda.is_available()
-    ref_name  = args.ref_model_name or args.model_name
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    use_fp16 = args.fp16 and torch.cuda.is_available()
+    ref_name = args.ref_model_name or args.model_name
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    policy    = AutoModelForCausalLM.from_pretrained(args.model_name).to(device)
+    policy = AutoModelForCausalLM.from_pretrained(args.model_name).to(device)
     ref_model = AutoModelForCausalLM.from_pretrained(ref_name).to(device)
     ref_model.eval()
     for p in ref_model.parameters():
         p.requires_grad_(False)
 
     train_rows = load_jsonl(args.train_file)
-    eval_rows  = load_jsonl(args.eval_file)
+    eval_rows = load_jsonl(args.eval_file)
     if args.max_samples is not None:
         train_rows = train_rows[: args.max_samples]
-        eval_rows  = eval_rows[: max(1, args.max_samples // 10)]
+        eval_rows = eval_rows[: max(1, args.max_samples // 10)]
 
     collator = DPOCollator(tokenizer, args.max_length, args.max_prompt_length, device)
 
