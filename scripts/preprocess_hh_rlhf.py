@@ -8,7 +8,7 @@ ASSISTANT_MARKER = "Assistant:"
 
 
 def normalize_text(text):
-    """Normalize whitespace while preserving dialogue line breaks."""
+    # Normalize whitespace while preserving dialogue line breaks
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
@@ -24,7 +24,7 @@ def common_prefix_len(left, right):
 
 
 def split_preference_pair(example):
-    """Split HH-RLHF chosen/rejected full transcripts into a training triple."""
+    # Split HH-RLHF chosen/rejected full transcripts into a training triple
     chosen_full = normalize_text(example["chosen"])
     rejected_full = normalize_text(example["rejected"])
 
