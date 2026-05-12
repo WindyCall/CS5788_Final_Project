@@ -33,7 +33,7 @@ def log_print(log_path, message):
 
 
 class DPODataset(Dataset):
-    """Stores raw strings; tokenisation is deferred to the collator."""
+    # Stores raw strings; tokenisation is deferred to the collator
 
     def __init__(self, rows):
         self.rows = rows
@@ -46,7 +46,7 @@ class DPODataset(Dataset):
 
 
 class DPOCollator:
-    """Tokenise chosen/rejected full sequences and record prompt length."""
+    # Tokenise chosen/rejected full sequences and record prompt length
 
     def __init__(self, tokenizer, max_length, max_prompt_length, device):
         self.tokenizer = tokenizer
@@ -97,14 +97,8 @@ class DPOCollator:
 
 
 def completion_mask(input_ids, attention_mask, prompt_lens):
-    """Binary mask [B, T-1]: 1 for response tokens, 0 for prompt/padding.
-
-    We score positions t where:
-      - t >= prompt_len  (response, not prompt)
-      - attention_mask[:, t+1] == 1  (not padding in the target)
-    We use the shifted view: logits[:, :-1] predicts input_ids[:, 1:],
-    so the mask also has length T-1.
-    """
+    # Binary mask [B, T-1]: 1 for response tokens, 0 for prompt/padding.
+    
     B, T = input_ids.shape
     pos = torch.arange(T - 1, device=input_ids.device)           # [T-1]
     # position t in the logit dimension corresponds to predicting token t+1
@@ -114,11 +108,7 @@ def completion_mask(input_ids, attention_mask, prompt_lens):
 
 
 def sequence_logprob(model_logits, input_ids, attention_mask, prompt_lens):
-    """Sum of log-probs over completion tokens.
-
-    model_logits : [B, T, V]
-    Returns      : [B]
-    """
+    # Sum of log-probs over completion tokens.
     log_probs = F.log_softmax(model_logits[:, :-1, :], dim=-1)   # [B, T-1, V]
     targets = input_ids[:, 1:].clone()                          # [B, T-1]
     mask = completion_mask(input_ids, attention_mask, prompt_lens)  # [B, T-1]
@@ -136,10 +126,7 @@ def compute_dpo_loss(
     rejected_logprob_ref,
     beta,
 ):
-    """Batch-mean DPO loss.
-
-    All inputs are [B] tensors of total completion log-probabilities.
-    """
+    # Batch-mean DPO loss.
     logits = beta * (
         (chosen_logprob   - rejected_logprob) -
         (chosen_logprob_ref - rejected_logprob_ref)

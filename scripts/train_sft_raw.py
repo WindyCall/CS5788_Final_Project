@@ -67,7 +67,7 @@ class SFTCollator:
         self.pad_id = pad_token_id
 
     def __call__(self, batch):
-        def pad(seqs: list[list[int]], pad_val: int) -> torch.Tensor:
+        def pad(seqs, pad_val):
             max_len = max(len(s) for s in seqs)
             return torch.tensor([s + [pad_val] * (max_len - len(s)) for s in seqs])
 
@@ -77,11 +77,7 @@ class SFTCollator:
         return {"input_ids": input_ids, "attention_mask": attn_mask, "labels": labels}
 
 def compute_sft_loss(logits, labels):
-    """Teacher-forcing cross-entropy on non-masked label positions.
-
-    logits : [B, T, V]
-    labels : [B, T]  (-100 = ignore)
-    """
+    # Teacher-forcing cross-entropy on non-masked label positions.
     shift_logits = logits[:, :-1, :]        # predict token t+1 from token t
     shift_labels = labels[:, 1:].clone()    # [B, T-1]
     mask = shift_labels != -100             # [B, T-1]

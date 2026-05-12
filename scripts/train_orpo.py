@@ -106,15 +106,8 @@ class ORPOTrainer(Trainer):
         return metrics
 
     @staticmethod
-    def _sequence_log_probs(logits, labels):
-        """Mean log-probability over non-masked response tokens.
-
-        Args:
-            logits: [B, T, V]
-            labels: [B, T]  (-100 for masked positions)
-        Returns:
-            [B] mean log-prob per sequence
-        """
+    def sequence_log_probs(logits, labels):
+        # Mean log-probability over non-masked response tokens
         log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)  # [B, T-1, V]
         targets = labels[:, 1:].clone()                      # [B, T-1]
         mask = targets != -100                            # [B, T-1]
@@ -144,7 +137,7 @@ class ORPOTrainer(Trainer):
             labels=inputs["chosen_labels"],
         )
         sft_loss = chosen_out.loss
-        chosen_log_prob = self._sequence_log_probs(chosen_out.logits, inputs["chosen_labels"])
+        chosen_log_prob = self.sequence_log_probs(chosen_out.logits, inputs["chosen_labels"])
 
         # Rejected forward pass 
         rejected_out = model(
@@ -152,7 +145,7 @@ class ORPOTrainer(Trainer):
             attention_mask=inputs["rejected_attention_mask"],
             labels=inputs["rejected_labels"],
         )
-        rejected_log_prob = self._sequence_log_probs(rejected_out.logits, inputs["rejected_labels"])
+        rejected_log_prob = self.sequence_log_probs(rejected_out.logits, inputs["rejected_labels"])
 
         # Odds-ratio loss
         def log_odds(log_p: torch.Tensor) -> torch.Tensor:
