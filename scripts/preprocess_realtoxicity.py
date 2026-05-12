@@ -1,7 +1,7 @@
 import argparse
 import json
 from pathlib import Path
-
+from datasets import load_dataset
 
 def get_nested_text(value):
     if isinstance(value, dict):
@@ -45,13 +45,8 @@ def save_jsonl(dataset, path):
             file.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
-def preprocess(
-    cache_dir,
-    output_dir,
-    max_samples,
-):
-    from datasets import load_dataset
-
+def preprocess(cache_dir, output_dir, max_samples):
+    
     raw = load_dataset(
         "allenai/real-toxicity-prompts",
         split="train",
