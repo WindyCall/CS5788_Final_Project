@@ -55,10 +55,10 @@ class DPOCollator:
         max_prompt_length,
         device,
     ):
-        self.tokenizer        = tokenizer
-        self.max_length       = max_length
+        self.tokenizer = tokenizer
+        self.max_length = max_length
         self.max_prompt_length = max_prompt_length
-        self.device           = device
+        self.device = device
 
     def _encode(self, texts):
         enc = self.tokenizer(
@@ -73,7 +73,7 @@ class DPOCollator:
 
     def __call__(self, batch):
         # Concatenate prompt + response for each side
-        chosen_texts   = [b["prompt"] + " " + b["chosen"]   for b in batch]
+        chosen_texts = [b["prompt"] + " " + b["chosen"]   for b in batch]
         rejected_texts = [b["prompt"] + " " + b["rejected"] for b in batch]
 
         chosen   = self._encode(chosen_texts)
@@ -94,11 +94,11 @@ class DPOCollator:
         )
 
         return {
-            "chosen_input_ids":        chosen["input_ids"],
-            "chosen_attention_mask":   chosen["attention_mask"],
-            "rejected_input_ids":      rejected["input_ids"],
+            "chosen_input_ids": chosen["input_ids"],
+            "chosen_attention_mask": chosen["attention_mask"],
+            "rejected_input_ids": rejected["input_ids"],
             "rejected_attention_mask": rejected["attention_mask"],
-            "prompt_lens":             prompt_lens,
+            "prompt_lens": prompt_lens,
         }
 
 
@@ -116,10 +116,10 @@ def _completion_mask(
     so the mask also has length T-1.
     """
     B, T = input_ids.shape
-    pos  = torch.arange(T - 1, device=input_ids.device)           # [T-1]
+    pos = torch.arange(T - 1, device=input_ids.device)           # [T-1]
     # position t in the logit dimension corresponds to predicting token t+1
     after_prompt = pos.unsqueeze(0) >= prompt_lens.unsqueeze(1)    # [B, T-1]
-    not_pad      = attention_mask[:, 1:].bool()                    # [B, T-1]
+    not_pad = attention_mask[:, 1:].bool()                    # [B, T-1]
     return (after_prompt & not_pad).float()
 
 
@@ -135,8 +135,8 @@ def sequence_logprob(
     Returns      : [B]
     """
     log_probs = F.log_softmax(model_logits[:, :-1, :], dim=-1)   # [B, T-1, V]
-    targets   = input_ids[:, 1:].clone()                          # [B, T-1]
-    mask      = _completion_mask(input_ids, attention_mask, prompt_lens)  # [B, T-1]
+    targets = input_ids[:, 1:].clone()                          # [B, T-1]
+    mask = _completion_mask(input_ids, attention_mask, prompt_lens)  # [B, T-1]
 
     # Gather log-prob of the actual next token
     selected = log_probs.gather(2, targets.unsqueeze(-1)).squeeze(-1)  # [B, T-1]
@@ -231,11 +231,11 @@ def main():
     log_print(log_path, f"Train: {len(train_rows)} examples | Eval: {len(eval_rows)} examples")
 
     total_steps = math.ceil(len(train_loader) / args.grad_accum) * args.epochs
-    optimizer   = torch.optim.AdamW(policy.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8)
-    scheduler   = LambdaLR(optimizer, lr_lambda=lambda s: cosine_schedule(s, total_steps))
-    scaler      = torch.cuda.amp.GradScaler(enabled=use_fp16)
+    optimizer = torch.optim.AdamW(policy.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8)
+    scheduler = LambdaLR(optimizer, lr_lambda=lambda s: cosine_schedule(s, total_steps))
+    scaler = torch.cuda.amp.GradScaler(enabled=use_fp16)
 
-    global_step   = 0
+    global_step = 0
     step_loss_sum = 0.0
     step_margin_sum = 0.0
     step_batches = 0
@@ -328,11 +328,11 @@ def main():
         eval_losses = []
         with torch.no_grad():
             for batch in eval_loader:
-                c_ids  = batch["chosen_input_ids"]
+                c_ids = batch["chosen_input_ids"]
                 c_attn = batch["chosen_attention_mask"]
-                r_ids  = batch["rejected_input_ids"]
+                r_ids = batch["rejected_input_ids"]
                 r_attn = batch["rejected_attention_mask"]
-                plens  = batch["prompt_lens"]
+                plens = batch["prompt_lens"]
 
                 with torch.cuda.amp.autocast(enabled=use_fp16):
                     c_lp_ref = sequence_logprob(
