@@ -118,9 +118,9 @@ def score_toxicity(texts, batch_size, device):
     )
     scores = []
     for i in range(0, len(texts), batch_size):
-        batch       = texts[i : i + batch_size]
-        safe_batch  = [t.strip() if t.strip() else "." for t in batch]
-        results     = classifier(safe_batch, truncation=True, max_length=512)
+        batch = texts[i : i + batch_size]
+        safe_batch = [t.strip() if t.strip() else "." for t in batch]
+        results = classifier(safe_batch, truncation=True, max_length=512)
 
         for label_list in results:
             toxic_score = next(
