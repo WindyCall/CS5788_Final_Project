@@ -103,7 +103,7 @@ def compute_perplexity(model, tokenizer, eval_file, device, max_samples=500, max
             loss = model(input_ids, labels=input_ids).loss
         # loss is mean cross-entropy over tokens; scale back to sum
         n_tokens = input_ids.shape[1] - 1
-        total_loss   += loss.item() * n_tokens
+        total_loss += loss.item() * n_tokens
         total_tokens += n_tokens
 
     return round(math.exp(total_loss / total_tokens), 4)
