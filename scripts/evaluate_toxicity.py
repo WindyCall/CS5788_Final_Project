@@ -88,7 +88,7 @@ def generate_continuations(model, tokenizer, prompts, max_new_tokens, batch_size
 
 
 def compute_perplexity(model, tokenizer, eval_file, device, max_samples=500, max_length=512):
-    """Compute perplexity on HH-RLHF test set (prompt + chosen)."""
+    # Compute perplexity on HH-RLHF test set (prompt + chosen).
     rows = load_jsonl(eval_file)[:max_samples]
     texts = [r["prompt"] + " " + r["chosen"] for r in rows]
 
