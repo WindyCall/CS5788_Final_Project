@@ -76,7 +76,7 @@ class DPOCollator:
         chosen_texts = [b["prompt"] + " " + b["chosen"]   for b in batch]
         rejected_texts = [b["prompt"] + " " + b["rejected"] for b in batch]
 
-        chosen   = self._encode(chosen_texts)
+        chosen = self._encode(chosen_texts)
         rejected = self._encode(rejected_texts)
 
         # Prompt-only length (used to build the completion mask)
