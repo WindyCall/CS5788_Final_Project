@@ -28,7 +28,7 @@ def tokenize_row(
     max_length,
     max_prompt_length,
 ):
-    """Convert one {prompt, chosen, rejected} triplet into model inputs."""
+    # Convert one {prompt, chosen, rejected} triplet into model inputs
     prompt = example["prompt"]
     chosen_response = " " + example["chosen"]
     rejected_response = " " + example["rejected"]
