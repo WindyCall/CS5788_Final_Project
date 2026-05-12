@@ -287,27 +287,27 @@ def main():
     # Save results
     args.output_dir.mkdir(parents=True, exist_ok=True)
     result = {
-        "model_label":              args.model_label,
-        "model_path":               str(args.model_path),
+        "model_label": args.model_label,
+        "model_path": str(args.model_path),
         # toxicity
-        "avg_toxicity_score":       avg_score,
-        "prob_toxicity":            prob_toxic,
-        "num_samples":              len(toxicity_scores),
+        "avg_toxicity_score": avg_score,
+        "prob_toxicity": prob_toxic,
+        "num_samples": len(toxicity_scores),
         # quality
-        "perplexity":               perplexity,
+        "perplexity": perplexity,
         # model size
         **model_profile,
         # speed
         "total_generation_time_s":  round(gen_time, 2),
-        "avg_generation_time_s":    avg_gen_time,
-        "tokens_per_second":        tokens_per_second,
+        "avg_generation_time_s": avg_gen_time,
+        "tokens_per_second": tokens_per_second,
         # memory
         "peak_inference_memory_mb": mem_mb,
         # per-sample
         "samples": [
             {
-                "prompt":         prompts[i],
-                "continuation":   continuations[i],
+                "prompt": prompts[i],
+                "continuation": continuations[i],
                 "toxicity_score": toxicity_scores[i],
             }
             for i in range(len(prompts))
