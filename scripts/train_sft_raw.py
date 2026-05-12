@@ -78,7 +78,7 @@ class SFTCollator:
             return torch.tensor([s + [pad_val] * (max_len - len(s)) for s in seqs])
 
         input_ids = pad([x["input_ids"] for x in batch], self.pad_id)
-        labels    = pad([x["labels"]    for x in batch], -100)
+        labels = pad([x["labels"]    for x in batch], -100)
         attn_mask = (input_ids != self.pad_id).long()
         return {"input_ids": input_ids, "attention_mask": attn_mask, "labels": labels}
 
@@ -114,20 +114,20 @@ def cosine_schedule(step, total, min_ratio=0.1):
 
 def main():
     parser = argparse.ArgumentParser(description="Raw SFT training (no TRL)")
-    parser.add_argument("--model-name",        default="gpt2")
+    parser.add_argument("--model-name", default="gpt2")
     parser.add_argument("--train-file", type=Path, default=Path("data/processed/training/hh_rlhf/hh_rlhf_train.jsonl"))
     parser.add_argument("--eval-file",  type=Path, default=Path("data/processed/training/hh_rlhf/hh_rlhf_test.jsonl"))
     parser.add_argument("--output-dir", type=Path, default=Path("models/sft"))
-    parser.add_argument("--epochs",            type=int,   default=1)
-    parser.add_argument("--batch-size",        type=int,   default=4)
-    parser.add_argument("--grad-accum",        type=int,   default=4)
-    parser.add_argument("--lr",                type=float, default=2e-5)
-    parser.add_argument("--max-length",        type=int,   default=512)
+    parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--batch-size", type=int,   default=4)
+    parser.add_argument("--grad-accum", type=int,   default=4)
+    parser.add_argument("--lr", type=float, default=2e-5)
+    parser.add_argument("--max-length", type=int,   default=512)
     parser.add_argument("--max-prompt-length", type=int,   default=256)
-    parser.add_argument("--max-samples",       type=int,   default=None)
-    parser.add_argument("--log-steps",         type=int,   default=50)
+    parser.add_argument("--max-samples", type=int,   default=None)
+    parser.add_argument("--log-steps", type=int,   default=50)
     parser.add_argument("--log-dir", type=Path, default=Path("results/training_logs/raw_runs"))
-    parser.add_argument("--fp16",              action="store_true")
+    parser.add_argument("--fp16", action="store_true")
     args = parser.parse_args()
     if args.log_steps <= 0:
         raise ValueError("--log-steps must be a positive integer")
@@ -146,24 +146,24 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(args.model_name).to(device)
 
     train_rows = load_jsonl(args.train_file)
-    eval_rows  = load_jsonl(args.eval_file)
+    eval_rows = load_jsonl(args.eval_file)
     if args.max_samples is not None:
         train_rows = train_rows[: args.max_samples]
-        eval_rows  = eval_rows[: max(1, args.max_samples // 10)]
+        eval_rows = eval_rows[: max(1, args.max_samples // 10)]
 
     train_ds = SFTDataset(train_rows, tokenizer, args.max_length, args.max_prompt_length)
-    eval_ds  = SFTDataset(eval_rows,  tokenizer, args.max_length, args.max_prompt_length)
+    eval_ds = SFTDataset(eval_rows,  tokenizer, args.max_length, args.max_prompt_length)
     collator = SFTCollator(tokenizer.pad_token_id)
 
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True,  collate_fn=collator)
-    eval_loader  = DataLoader(eval_ds,  batch_size=args.batch_size, shuffle=False, collate_fn=collator)
+    eval_loader = DataLoader(eval_ds,  batch_size=args.batch_size, shuffle=False, collate_fn=collator)
 
     log_print(log_path, f"Train: {len(train_ds)} examples | Eval: {len(eval_ds)} examples")
 
     total_steps = math.ceil(len(train_loader) / args.grad_accum) * args.epochs
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8)
     scheduler = LambdaLR(optimizer, lr_lambda=lambda s: cosine_schedule(s, total_steps))
-    scaler    = torch.cuda.amp.GradScaler(enabled=use_fp16)
+    scaler = torch.cuda.amp.GradScaler(enabled=use_fp16)
 
     global_step = 0
     for epoch in range(args.epochs):
@@ -177,10 +177,10 @@ def main():
         for i, batch in enumerate(train_loader):
             input_ids = batch["input_ids"].to(device)
             attn_mask = batch["attention_mask"].to(device)
-            labels    = batch["labels"].to(device)
+            labels = batch["labels"].to(device)
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
-                out  = model(input_ids=input_ids, attention_mask=attn_mask)
+                out = model(input_ids=input_ids, attention_mask=attn_mask)
                 loss = compute_sft_loss(out.logits, labels) / args.grad_accum
 
             scaler.scale(loss).backward()
@@ -220,9 +220,9 @@ def main():
             for batch in eval_loader:
                 input_ids = batch["input_ids"].to(device)
                 attn_mask = batch["attention_mask"].to(device)
-                labels    = batch["labels"].to(device)
+                labels = batch["labels"].to(device)
                 with torch.cuda.amp.autocast(enabled=use_fp16):
-                    out  = model(input_ids=input_ids, attention_mask=attn_mask)
+                    out = model(input_ids=input_ids, attention_mask=attn_mask)
                     loss = compute_sft_loss(out.logits, labels)
                 eval_losses.append(loss.item())
         avg_eval = sum(eval_losses) / len(eval_losses)
