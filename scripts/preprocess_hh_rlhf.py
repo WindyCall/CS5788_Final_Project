@@ -42,11 +42,7 @@ def split_preference_pair(example):
     chosen = chosen_full[len(prompt) :].strip()
     rejected = rejected_full[len(prompt) :].strip()
 
-    return {
-        "prompt": prompt,
-        "chosen": chosen,
-        "rejected": rejected,
-    }
+    return {"prompt": prompt, "chosen": chosen, "rejected": rejected}
 
 
 def is_valid_example(example):
