@@ -143,24 +143,24 @@ def cosine_schedule(step, total, min_ratio=0.1):
 
 def main():
     parser = argparse.ArgumentParser(description="Raw DPO training (no TRL)")
-    parser.add_argument("--model-name",     default="models/sft",
+    parser.add_argument("--model-name", default="models/sft",
                         help="SFT checkpoint used as the trainable policy")
     parser.add_argument("--ref-model-name", default=None,
                         help="Frozen reference (defaults to --model-name)")
     parser.add_argument("--train-file", type=Path, default=Path("data/processed/training/hh_rlhf/hh_rlhf_train.jsonl"))
-    parser.add_argument("--eval-file",  type=Path, default=Path("data/processed/training/hh_rlhf/hh_rlhf_test.jsonl"))
+    parser.add_argument("--eval-file", type=Path, default=Path("data/processed/training/hh_rlhf/hh_rlhf_test.jsonl"))
     parser.add_argument("--output-dir", type=Path, default=Path("models/dpo"))
-    parser.add_argument("--epochs",            type=int,   default=1)
-    parser.add_argument("--batch-size",        type=int,   default=2)
-    parser.add_argument("--grad-accum",        type=int,   default=8)
-    parser.add_argument("--lr",                type=float, default=1e-5)
-    parser.add_argument("--beta",              type=float, default=0.1)
-    parser.add_argument("--max-length",        type=int,   default=512)
-    parser.add_argument("--max-prompt-length", type=int,   default=256)
-    parser.add_argument("--max-samples",       type=int,   default=None)
-    parser.add_argument("--log-steps",         type=int,   default=50)
+    parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--batch-size", type=int, default=2)
+    parser.add_argument("--grad-accum", type=int, default=8)
+    parser.add_argument("--lr", type=float, default=1e-5)
+    parser.add_argument("--beta", type=float, default=0.1)
+    parser.add_argument("--max-length", type=int, default=512)
+    parser.add_argument("--max-prompt-length", type=int, default=256)
+    parser.add_argument("--max-samples", type=int, default=None)
+    parser.add_argument("--log-steps", type=int, default=50)
     parser.add_argument("--log-dir", type=Path, default=Path("results/training_logs/raw_runs"))
-    parser.add_argument("--fp16",              action="store_true")
+    parser.add_argument("--fp16", action="store_true")
     args = parser.parse_args()
     if args.log_steps <= 0:
         raise ValueError("--log-steps must be a positive integer")
