@@ -191,7 +191,6 @@ def print_summary():
             else:
                 row += f"{val:>{col_w},}"
         print(row)
-    print("=" * len(header))
 
 
 def main():
