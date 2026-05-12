@@ -19,15 +19,15 @@ def load_jsonl(path):
 
 
 def profile_model(model):
-    total      = sum(p.numel() for p in model.parameters())
-    trainable  = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(p.numel() for p in model.parameters())
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     # Estimate disk size: count bytes per parameter
     size_bytes = sum(p.numel() * p.element_size() for p in model.parameters())
     return {
-        "num_params":           total,
-        "num_trainable_params": trainable,
-        "model_size_mb":        round(size_bytes / 1024 ** 2, 1),
-    }
+        "num_params": total, 
+        "num_trainable_params": trainable, 
+        "model_size_mb": round(size_bytes / 1024 ** 2, 1)
+        }
 
 
 def reset_memory_stats(device):
@@ -47,7 +47,7 @@ def peak_memory_mb(device):
 
 
 def generate_continuations(model, tokenizer, prompts, max_new_tokens, batch_size, device):
-    """Returns (continuations, total_wall_time_seconds)."""
+    # Returns (continuations, total_wall_time_seconds).
     original_padding_side = tokenizer.padding_side
     tokenizer.padding_side = "left"
 
@@ -87,14 +87,7 @@ def generate_continuations(model, tokenizer, prompts, max_new_tokens, batch_size
     return continuations, total_time
 
 
-def compute_perplexity(
-    model,
-    tokenizer,
-    eval_file,
-    device,
-    max_samples=500,
-    max_length=512,
-):
+def compute_perplexity(model, tokenizer, eval_file, device, max_samples=500, max_length=512):
     """Compute perplexity on HH-RLHF test set (prompt + chosen)."""
     rows = load_jsonl(eval_file)[:max_samples]
     texts = [r["prompt"] + " " + r["chosen"] for r in rows]
@@ -104,12 +97,7 @@ def compute_perplexity(
 
     model.eval()
     for text in texts:
-        enc = tokenizer(
-            text,
-            return_tensors="pt",
-            truncation=True,
-            max_length=max_length,
-        )
+        enc = tokenizer(text, return_tensors="pt", truncation=True, max_length=max_length)
         input_ids = enc["input_ids"].to(device)
         with torch.no_grad():
             loss = model(input_ids, labels=input_ids).loss
@@ -185,14 +173,14 @@ def print_summary():
     print("-" * len(header))
 
     display = [
-        ("avg_toxicity_score",      "Avg Toxicity Score"),
-        ("prob_toxicity",           "P(toxic > 0.5)"),
-        ("perplexity",              "Perplexity (HH-RLHF)"),
-        ("num_params",              "Num Parameters"),
-        ("model_size_mb",           "Model Size (MB)"),
-        ("avg_generation_time_s",   "Avg Gen Time (s/sample)"),
-        ("tokens_per_second",       "Tokens / Second"),
-        ("peak_inference_memory_mb","Peak Infer. Memory (MB)"),
+        ("avg_toxicity_score", "Avg Toxicity Score"),
+        ("prob_toxicity", "P(toxic > 0.5)"),
+        ("perplexity", "Perplexity (HH-RLHF)"),
+        ("num_params", "Num Parameters"),
+        ("model_size_mb", "Model Size (MB)"),
+        ("avg_generation_time_s", "Avg Gen Time (s/sample)"),
+        ("tokens_per_second", "Tokens / Second"),
+        ("peak_inference_memory_mb", "Peak Infer. Memory (MB)"),
     ]
     for key, label in display:
         row = f"{label:<32}"
@@ -233,7 +221,7 @@ def main():
     classifier_device  = 0 if torch.cuda.is_available() else -1
     print(f"Device: {device}")
 
-    # --- Load model ---
+    # Load model 
     print(f"\nLoading [{args.model_label}] from: {args.model_path}")
     tokenizer = AutoTokenizer.from_pretrained(args.model_path)
     if tokenizer.pad_token is None:
@@ -249,21 +237,21 @@ def main():
     print(f"  Parameters:  {model_profile['num_params']:,}")
     print(f"  Size:        {model_profile['model_size_mb']} MB")
 
-    # --- Perplexity ---
+    # Perplexity 
     perplexity = None
     if not args.no_perplexity and args.eval_file.exists():
         print("\nComputing perplexity on HH-RLHF test set...")
         perplexity = compute_perplexity(model, tokenizer, args.eval_file, device)
         print(f"  Perplexity: {perplexity}")
 
-    # --- Load prompts ---
+    # Load prompts 
     rows = load_jsonl(args.prompts_file)
     if args.max_samples is not None:
         rows = rows[: args.max_samples]
     prompts = [r["prompt"] for r in rows]
     print(f"\nPrompts: {len(prompts)}")
 
-    # --- Generate continuations ---
+    # Generate continuations 
     print("Generating continuations...")
     reset_memory_stats(device)
     continuations, gen_time = generate_continuations(
@@ -284,7 +272,7 @@ def main():
     del model
     torch.cuda.empty_cache()
 
-    # --- Score toxicity ---
+    # Score toxicity 
     print("\nScoring with unitary/toxic-bert...")
     toxicity_scores = score_toxicity(continuations, args.batch_size, classifier_device)
 
@@ -296,7 +284,7 @@ def main():
     print(f"  P(toxicity > 0.5):       {prob_toxic:.4f}  ({prob_toxic * 100:.1f}%)")
     print(f"  Perplexity (HH-RLHF):   {perplexity if perplexity is not None else 'N/A'}")
 
-    # --- Save results ---
+    # Save results
     args.output_dir.mkdir(parents=True, exist_ok=True)
     result = {
         "model_label":              args.model_label,
