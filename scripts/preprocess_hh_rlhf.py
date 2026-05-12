@@ -2,7 +2,7 @@ import argparse
 import json
 import re
 from pathlib import Path
-
+from datasets import DatasetDict, load_dataset
 
 ASSISTANT_MARKER = "Assistant:"
 
@@ -57,8 +57,6 @@ def save_jsonl(dataset, path):
 
 
 def preprocess(data_dir, cache_dir, output_dir, max_train_samples, max_test_samples):
-    from datasets import DatasetDict, load_dataset
-
     raw = load_dataset(
         "Anthropic/hh-rlhf",
         data_dir=data_dir,
