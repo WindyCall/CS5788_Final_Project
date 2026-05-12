@@ -29,7 +29,7 @@ def tokenize_row(
     max_prompt_length,
 ):
     """Convert one {prompt, chosen, rejected} triplet into model inputs."""
-    prompt          = example["prompt"]
+    prompt = example["prompt"]
     chosen_response = " " + example["chosen"]
     rejected_response = " " + example["rejected"]
 
@@ -42,23 +42,23 @@ def tokenize_row(
     remaining  = max_length - prompt_len
 
     # Tokenise responses without re-adding BOS
-    chosen_ids   = tokenizer.encode(chosen_response,   add_special_tokens=False)[:remaining]
+    chosen_ids = tokenizer.encode(chosen_response,   add_special_tokens=False)[:remaining]
     rejected_ids = tokenizer.encode(rejected_response, add_special_tokens=False)[:remaining]
 
-    chosen_full   = prompt_ids + chosen_ids
+    chosen_full = prompt_ids + chosen_ids
     rejected_full = prompt_ids + rejected_ids
 
     # Mask prompt tokens in labels so loss is only computed on the response
-    chosen_labels   = [-100] * prompt_len + chosen_ids
+    chosen_labels = [-100] * prompt_len + chosen_ids
     rejected_labels = [-100] * prompt_len + rejected_ids
 
     return {
-        "chosen_input_ids":        chosen_full,
-        "chosen_attention_mask":   [1] * len(chosen_full),
-        "chosen_labels":           chosen_labels,
-        "rejected_input_ids":      rejected_full,
+        "chosen_input_ids": chosen_full,
+        "chosen_attention_mask": [1] * len(chosen_full),
+        "chosen_labels": chosen_labels,
+        "rejected_input_ids": rejected_full,
         "rejected_attention_mask": [1] * len(rejected_full),
-        "rejected_labels":         rejected_labels,
+        "rejected_labels": rejected_labels,
     }
 
 
@@ -72,12 +72,12 @@ class ORPODataCollator:
             return torch.tensor([s + [pad_val] * (max_len - len(s)) for s in seqs])
 
         return {
-            "chosen_input_ids":        pad([x["chosen_input_ids"]        for x in batch], self.pad_token_id),
-            "chosen_attention_mask":   pad([x["chosen_attention_mask"]   for x in batch], 0),
-            "chosen_labels":           pad([x["chosen_labels"]           for x in batch], -100),
-            "rejected_input_ids":      pad([x["rejected_input_ids"]      for x in batch], self.pad_token_id),
+            "chosen_input_ids": pad([x["chosen_input_ids"] for x in batch], self.pad_token_id),
+            "chosen_attention_mask": pad([x["chosen_attention_mask"] for x in batch], 0),
+            "chosen_labels": pad([x["chosen_labels"] for x in batch], -100),
+            "rejected_input_ids": pad([x["rejected_input_ids"] for x in batch], self.pad_token_id),
             "rejected_attention_mask": pad([x["rejected_attention_mask"] for x in batch], 0),
-            "rejected_labels":         pad([x["rejected_labels"]         for x in batch], -100),
+            "rejected_labels": pad([x["rejected_labels"] for x in batch], -100),
         }
 
 
@@ -116,12 +116,12 @@ class ORPOTrainer(Trainer):
             [B] mean log-prob per sequence
         """
         log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)  # [B, T-1, V]
-        targets   = labels[:, 1:].clone()                      # [B, T-1]
-        mask      = targets != -100                            # [B, T-1]
+        targets = labels[:, 1:].clone()                      # [B, T-1]
+        mask = targets != -100                            # [B, T-1]
 
         targets[~mask] = 0                                     # safe index
-        selected  = log_probs.gather(2, targets.unsqueeze(-1)).squeeze(-1)  # [B, T-1]
-        selected  = selected * mask.float()
+        selected = log_probs.gather(2, targets.unsqueeze(-1)).squeeze(-1)  # [B, T-1]
+        selected = selected * mask.float()
 
         return selected.sum(-1) / mask.float().sum(-1).clamp(min=1.0)      # [B]
 
@@ -137,16 +137,16 @@ class ORPOTrainer(Trainer):
         return_outputs=False,
         num_items_in_batch=None,
     ):
-        # --- Chosen forward pass (provides SFT loss) ---
+        # Chosen forward pass (provides SFT loss)
         chosen_out = model(
             input_ids=inputs["chosen_input_ids"],
             attention_mask=inputs["chosen_attention_mask"],
             labels=inputs["chosen_labels"],
         )
-        sft_loss        = chosen_out.loss
+        sft_loss = chosen_out.loss
         chosen_log_prob = self._sequence_log_probs(chosen_out.logits, inputs["chosen_labels"])
 
-        # --- Rejected forward pass ---
+        # Rejected forward pass 
         rejected_out = model(
             input_ids=inputs["rejected_input_ids"],
             attention_mask=inputs["rejected_attention_mask"],
@@ -154,13 +154,13 @@ class ORPOTrainer(Trainer):
         )
         rejected_log_prob = self._sequence_log_probs(rejected_out.logits, inputs["rejected_labels"])
 
-        # --- Odds-ratio loss ---
+        # Odds-ratio loss
         def log_odds(log_p: torch.Tensor) -> torch.Tensor:
             # log(p / (1 - p)) = log_p - log(1 - exp(log_p))
             return log_p - torch.log(1.0 - torch.exp(log_p.clamp(max=-1e-7)) + 1e-7)
 
-        log_or   = log_odds(chosen_log_prob) - log_odds(rejected_log_prob)
-        or_loss  = -F.logsigmoid(log_or).mean()
+        log_or = log_odds(chosen_log_prob) - log_odds(rejected_log_prob)
+        or_loss = -F.logsigmoid(log_or).mean()
 
         loss = sft_loss + self.orpo_beta * or_loss
         if model.training:
