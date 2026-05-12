@@ -217,8 +217,8 @@ def main():
     parser.add_argument("--fp16", action="store_true")
     args = parser.parse_args()
 
-    device             = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    classifier_device  = 0 if torch.cuda.is_available() else -1
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    classifier_device = 0 if torch.cuda.is_available() else -1
     print(f"Device: {device}")
 
     # Load model 
@@ -259,9 +259,9 @@ def main():
     )
     mem_mb = peak_memory_mb(device)
 
-    total_new_tokens   = sum(len(tokenizer.encode(c)) for c in continuations)
-    avg_gen_time       = round(gen_time / len(prompts), 4)
-    tokens_per_second  = round(total_new_tokens / gen_time, 1) if gen_time > 0 else 0.0
+    total_new_tokens = sum(len(tokenizer.encode(c)) for c in continuations)
+    avg_gen_time = round(gen_time / len(prompts), 4)
+    tokens_per_second = round(total_new_tokens / gen_time, 1) if gen_time > 0 else 0.0
 
     print(f"  Total time:     {gen_time:.1f}s")
     print(f"  Avg per sample: {avg_gen_time:.4f}s")
