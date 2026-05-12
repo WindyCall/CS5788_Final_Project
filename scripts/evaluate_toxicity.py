@@ -9,7 +9,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 
-TOXIC_BERT   = "unitary/toxic-bert"
+TOXIC_BERT = "unitary/toxic-bert"
 SUMMARY_FILE = Path("results/toxicity/summary.json")
 
 
