@@ -42,7 +42,7 @@ def tokenize_row(
     remaining = max_length - prompt_len
 
     # Tokenise responses without re-adding BOS
-    chosen_ids = tokenizer.encode(chosen_response,   add_special_tokens=False)[:remaining]
+    chosen_ids = tokenizer.encode(chosen_response, add_special_tokens=False)[:remaining]
     rejected_ids = tokenizer.encode(rejected_response, add_special_tokens=False)[:remaining]
 
     chosen_full = prompt_ids + chosen_ids
@@ -135,7 +135,7 @@ class ORPOTrainer(Trainer):
         model,
         inputs,
         return_outputs=False,
-        num_items_in_batch=None,
+        num_items_in_batch=None
     ):
         # Chosen forward pass (provides SFT loss)
         chosen_out = model(
