@@ -60,13 +60,7 @@ def save_jsonl(dataset, path):
             file.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
-def preprocess(
-    data_dir,
-    cache_dir,
-    output_dir,
-    max_train_samples,
-    max_test_samples,
-):
+def preprocess(data_dir, cache_dir, output_dir, max_train_samples, max_test_samples):
     from datasets import DatasetDict, load_dataset
 
     raw = load_dataset(
