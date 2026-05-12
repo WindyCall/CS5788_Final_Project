@@ -229,17 +229,17 @@ def main():
         help="Base model name or local path",
     )
     parser.add_argument("--train-file", type=Path, default=Path("data/processed/training/hh_rlhf/hh_rlhf_train.jsonl"))
-    parser.add_argument("--eval-file",  type=Path, default=Path("data/processed/training/hh_rlhf/hh_rlhf_test.jsonl"))
+    parser.add_argument("--eval-file", type=Path, default=Path("data/processed/training/hh_rlhf/hh_rlhf_test.jsonl"))
     parser.add_argument("--output-dir", type=Path, default=Path("models/orpo"))
-    parser.add_argument("--epochs",            type=int,   default=1)
-    parser.add_argument("--batch-size",        type=int,   default=4)
-    parser.add_argument("--grad-accum",        type=int,   default=4)
-    parser.add_argument("--lr",                type=float, default=1e-5)
-    parser.add_argument("--beta",              type=float, default=0.1, help="Odds-ratio penalty weight (λ)")
-    parser.add_argument("--max-length",        type=int,   default=512)
-    parser.add_argument("--max-prompt-length", type=int,   default=256)
-    parser.add_argument("--max-samples",       type=int,   default=None)
-    parser.add_argument("--log-steps",         type=int,   default=50)
+    parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--batch-size", type=int, default=4)
+    parser.add_argument("--grad-accum", type=int, default=4)
+    parser.add_argument("--lr", type=float, default=1e-5)
+    parser.add_argument("--beta", type=float, default=0.1, help="Odds-ratio penalty weight (λ)")
+    parser.add_argument("--max-length", type=int, default=512)
+    parser.add_argument("--max-prompt-length", type=int, default=256)
+    parser.add_argument("--max-samples", type=int, default=None)
+    parser.add_argument("--log-steps", type=int, default=50)
     parser.add_argument("--log-dir", type=Path, default=Path("results/training_logs/raw_runs"))
     parser.add_argument("--fp16", action="store_true")
     args = parser.parse_args()
@@ -257,15 +257,15 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(args.model_name)
 
     train_rows = load_jsonl(args.train_file)
-    eval_rows  = load_jsonl(args.eval_file)
+    eval_rows = load_jsonl(args.eval_file)
 
     if args.max_samples is not None:
         train_rows = train_rows[: args.max_samples]
-        eval_rows  = eval_rows[: max(1, args.max_samples // 10)]
+        eval_rows = eval_rows[: max(1, args.max_samples // 10)]
 
     tokenize = lambda ex: tokenize_row(ex, tokenizer, args.max_length, args.max_prompt_length)
     train_dataset = Dataset.from_list([tokenize(r) for r in train_rows])
-    eval_dataset  = Dataset.from_list([tokenize(r) for r in eval_rows])
+    eval_dataset = Dataset.from_list([tokenize(r) for r in eval_rows])
 
     log_print(log_path, f"Train examples: {len(train_dataset)} | Eval examples: {len(eval_dataset)}")
 
