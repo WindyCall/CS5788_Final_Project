@@ -67,7 +67,7 @@ class ORPODataCollator:
     pad_token_id: int
 
     def __call__(self, batch):
-        def pad(seqs: list[list[int]], pad_val: int) -> torch.Tensor:
+        def pad(seqs, pad_val):
             max_len = max(len(s) for s in seqs)
             return torch.tensor([s + [pad_val] * (max_len - len(s)) for s in seqs])
 
@@ -148,7 +148,7 @@ class ORPOTrainer(Trainer):
         rejected_log_prob = self.sequence_log_probs(rejected_out.logits, inputs["rejected_labels"])
 
         # Odds-ratio loss
-        def log_odds(log_p: torch.Tensor) -> torch.Tensor:
+        def log_odds(log_p):
             # log(p / (1 - p)) = log_p - log(1 - exp(log_p))
             return log_p - torch.log(1.0 - torch.exp(log_p.clamp(max=-1e-7)) + 1e-7)
 
