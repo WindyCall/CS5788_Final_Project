@@ -83,9 +83,6 @@ def preprocess(data_dir, cache_dir, output_dir, max_train_samples, max_test_samp
     save_jsonl(train, output_dir / "hh_rlhf_train.jsonl")
     save_jsonl(test, output_dir / "hh_rlhf_test.jsonl")
 
-    print(f"Saved train rows: {len(train):,} -> {output_dir / 'hh_rlhf_train.jsonl'}")
-    print(f"Saved test rows:  {len(test):,} -> {output_dir / 'hh_rlhf_test.jsonl'}")
-
 
 def parse_args():
     parser = argparse.ArgumentParser()

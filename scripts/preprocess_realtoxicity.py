@@ -71,12 +71,6 @@ def preprocess(cache_dir, output_dir, max_samples):
     save_jsonl(processed, output_dir / "realtoxicity_all.jsonl")
     save_jsonl(challenging, output_dir / "realtoxicity_challenging.jsonl")
 
-    print(f"Saved all rows:         {len(processed):,} -> {output_dir / 'realtoxicity_all.jsonl'}")
-    print(
-        "Saved challenging rows: "
-        f"{len(challenging):,} -> {output_dir / 'realtoxicity_challenging.jsonl'}"
-    )
-
 
 def parse_args():
     parser = argparse.ArgumentParser()

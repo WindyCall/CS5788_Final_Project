@@ -4,7 +4,7 @@ import math
 import os
 import time
 from pathlib import Path
-
+import psutil
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
@@ -39,11 +39,7 @@ def peak_memory_mb(device):
     if device.type == "cuda":
         return round(torch.cuda.max_memory_allocated(device) / 1024 ** 2, 1)
     # CPU fallback via /proc/self/status (Linux/Colab) or psutil if available
-    try:
-        import psutil
-        return round(psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, 1)
-    except ImportError:
-        return -1.0
+    return round(psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, 1)
 
 
 def generate_continuations(model, tokenizer, prompts, max_new_tokens, batch_size, device):
@@ -219,7 +215,6 @@ def main():
     print(f"Device: {device}")
 
     # Load model 
-    print(f"\nLoading [{args.model_label}] from: {args.model_path}")
     tokenizer = AutoTokenizer.from_pretrained(args.model_path)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -237,7 +232,6 @@ def main():
     # Perplexity 
     perplexity = None
     if not args.no_perplexity and args.eval_file.exists():
-        print("\nComputing perplexity on HH-RLHF test set...")
         perplexity = compute_perplexity(model, tokenizer, args.eval_file, device)
         print(f"  Perplexity: {perplexity}")
 
@@ -249,7 +243,6 @@ def main():
     print(f"\nPrompts: {len(prompts)}")
 
     # Generate continuations 
-    print("Generating continuations...")
     reset_memory_stats(device)
     continuations, gen_time = generate_continuations(
         model, tokenizer, prompts, args.max_new_tokens, args.batch_size, device
@@ -308,10 +301,8 @@ def main():
     out_file = args.output_dir / f"{args.model_label}.json"
     with out_file.open("w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
-    print(f"\nPer-sample results saved to {out_file}")
 
     update_summary(result)
-    print(f"Summary updated at {SUMMARY_FILE}")
     print_summary()
 
 
