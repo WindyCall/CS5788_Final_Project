@@ -89,7 +89,7 @@ class ORPOTrainer(Trainer):
         self._file_metric_count = 0
         super().__init__(**kwargs)
 
-    def _record_file_metrics(self, **metrics):
+    def record_file_metrics(self, **metrics):
         for name, value in metrics.items():
             self._file_metric_sums[name] = self._file_metric_sums.get(name, 0.0) + float(value.detach().cpu())
         self._file_metric_count += 1
@@ -157,7 +157,7 @@ class ORPOTrainer(Trainer):
 
         loss = sft_loss + self.orpo_beta * or_loss
         if model.training:
-            self._record_file_metrics(loss=loss, sft_loss=sft_loss, or_loss=or_loss)
+            self.record_file_metrics(loss=loss, sft_loss=sft_loss, or_loss=or_loss)
 
         return (loss, chosen_out) if return_outputs else loss
 

@@ -54,7 +54,7 @@ class DPOCollator:
         self.max_prompt_length = max_prompt_length
         self.device = device
 
-    def _encode(self, texts):
+    def encode(self, texts):
         enc = self.tokenizer(
             texts,
             padding=True,
@@ -70,8 +70,8 @@ class DPOCollator:
         chosen_texts = [b["prompt"] + " " + b["chosen"]   for b in batch]
         rejected_texts = [b["prompt"] + " " + b["rejected"] for b in batch]
 
-        chosen = self._encode(chosen_texts)
-        rejected = self._encode(rejected_texts)
+        chosen = self.encode(chosen_texts)
+        rejected = self.encode(rejected_texts)
 
         # Prompt-only length (used to build the completion mask)
         prompt_only = [b["prompt"] for b in batch]
@@ -100,23 +100,23 @@ def completion_mask(input_ids, attention_mask, prompt_lens):
     # Binary mask [B, T-1]: 1 for response tokens, 0 for prompt/padding.
     
     B, T = input_ids.shape
-    pos = torch.arange(T - 1, device=input_ids.device)           # [T-1]
+    pos = torch.arange(T - 1, device=input_ids.device)      
     # position t in the logit dimension corresponds to predicting token t+1
-    after_prompt = pos.unsqueeze(0) >= prompt_lens.unsqueeze(1)    # [B, T-1]
-    not_pad = attention_mask[:, 1:].bool()                    # [B, T-1]
+    after_prompt = pos.unsqueeze(0) >= prompt_lens.unsqueeze(1)   
+    not_pad = attention_mask[:, 1:].bool()                   
     return (after_prompt & not_pad).float()
 
 
 def sequence_logprob(model_logits, input_ids, attention_mask, prompt_lens):
     # Sum of log-probs over completion tokens.
-    log_probs = F.log_softmax(model_logits[:, :-1, :], dim=-1)   # [B, T-1, V]
-    targets = input_ids[:, 1:].clone()                          # [B, T-1]
-    mask = completion_mask(input_ids, attention_mask, prompt_lens)  # [B, T-1]
+    log_probs = F.log_softmax(model_logits[:, :-1, :], dim=-1)  
+    targets = input_ids[:, 1:].clone()                        
+    mask = completion_mask(input_ids, attention_mask, prompt_lens) 
 
     # Gather log-prob of the actual next token
-    selected = log_probs.gather(2, targets.unsqueeze(-1)).squeeze(-1)  # [B, T-1]
+    selected = log_probs.gather(2, targets.unsqueeze(-1)).squeeze(-1) 
     selected = selected * mask
-    return selected.sum(-1)                                        # [B]
+    return selected.sum(-1)                                      
 
 
 def compute_dpo_loss(

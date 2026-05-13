@@ -33,7 +33,7 @@ def log_print(log_path, message):
 
 
 class SFTDataset(Dataset):
-    """Tokenises prompt+chosen pairs; labels mask out prompt tokens."""
+    # Tokenises prompt+chosen pairs; labels mask out prompt tokens
 
     def __init__(self, rows, tokenizer, max_length, max_prompt_length):
         self.samples = []
