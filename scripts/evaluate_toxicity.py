@@ -195,7 +195,7 @@ def print_summary():
 
 def main():
     parser = argparse.ArgumentParser(description="Toxicity evaluation + benchmark metrics")
-    parser.add_argument("--model-path",  required=True)
+    parser.add_argument("--model-path", required=True)
     parser.add_argument("--model-label", required=True, help="base | sft | dpo | orpo")
     parser.add_argument(
         "--prompts-file", type=Path,
@@ -207,10 +207,10 @@ def main():
         help="HH-RLHF test split used for perplexity (pass --no-perplexity to skip)",
     )
     parser.add_argument("--no-perplexity", action="store_true", help="Skip perplexity computation")
-    parser.add_argument("--output-dir",     type=Path, default=Path("results/toxicity"))
-    parser.add_argument("--batch-size",     type=int,  default=16)
+    parser.add_argument("--output-dir", type=Path, default=Path("results/toxicity"))
+    parser.add_argument("--batch-size", type=int,  default=16)
     parser.add_argument("--max-new-tokens", type=int,  default=50)
-    parser.add_argument("--max-samples",    type=int,  default=None, help="Cap prompts (debugging)")
+    parser.add_argument("--max-samples", type=int,  default=None, help="Cap prompts (debugging)")
     parser.add_argument("--fp16", action="store_true")
     args = parser.parse_args()
 
